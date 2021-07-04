@@ -1,2 +1,117 @@
 # Customer-Service-Request-Analysis
 
+import pandas as pd
+import datetime as dt
+
+#1)Import a 311 NYC service request.
+
+df=pd.read_csv('311_Service_Requests_from_2010_to_Present.csv',low_memory=False)
+
+# 2)Read or convert the columns ‘Created Date’ and Closed Date’ to datetime datatype and
+create a new column ‘Request_Closing_Time’ as the time elapsed between request creation a
+nd request closing
+
+df['Closed Date']=pd.to_datetime(df['Closed Date'])
+df['Created Date']=pd.to_datetime(df['Created Date'])
+
+df['Request_Closing_Time']=(df['Closed Date'] - df['Created Date']).dt.total_seconds()
+df.shape
+
+
+#Checking the Null values
+
+df.Request_Closing_Time.isnull().sum()
+
+
+#Data Imputation
+
+df=df[df['Request_Closing_Time'].notnull()]
+df.shape
+
+#####Provide major insights/patterns that you can offer in a visual format (graphs or tab
+les);
+#####at least 4 major conclusions that you can come up with after generic data mining.
+
+##A.Complaints based on Location Type
+df1=df['Location Type'].value_counts()
+df1
+
+df1.plot(kind='bar',figsize=(15,9),title='Complaints based on location Types')
+
+###Insights on complaints
+df2=df['Complaint Type'].value_counts()
+df2
+
+###Insights on Top 6 complaints
+(df['Complaint Type'].value_counts()).head(6).plot(kind='bar',figsize=(13,9),title='Type
+s of complaints')
+
+###Analysis based on Complaints from each City
+df3=df['City'].value_counts()
+df3
+
+df3.plot(kind='bar',figsize=(15,9),title='Distribution of complaint based on City')
+
+###Insights on Top 6 complaints
+(df['City'].value_counts()).tail(6).plot(kind='bar',figsize=(15,9),title='Least Complain
+ing Cities')
+
+####Geographical Distribution of complaints
+df.plot(kind='scatter',x='Latitude',y='Longitude',figsize=(9,9),title='Geographical Dist
+ribution of complaints')
+
+### (4) Order the complaint types based on the average ‘Request_Closing_Time’, grouping t
+hem for different locations.
+
+df_new=df.groupby(['City','Complaint Type']).Request_Closing_Time.mean()
+df_new.head(20)
+
+#####Whether the average response time across complaint types is similar or not (overall)
+
+##ANOVA
+#h0: mu(Average response time) = mu(Complaint Type)
+#hA: mu(Average response time) =! mu(Complaint Type)
+
+from statsmodels.formula.api import ols
+import statsmodels.api as sm
+df['Complaint_Type']=df['Complaint Type']
+
+model=ols('Request_Closing_Time ~ Complaint_Type',data=df).fit()
+anova_mod=sm.stats.anova_lm(model)
+anova_mod
+
+##Null hypothesis is rejected as pvalue < 0.05 .
+##So,Average response time across complaints are not similar
+#### Are the type of complaint or service requested and location related?
+#h0: mu(Location) = mu(Type of complaint requested)
+#hA: mu(Location) != mu(Type of complaint requested)
+
+contingency=pd.crosstab(df['Complaint Type'],df['Location Type'])
+contingency
+
+contingency_pcr=pd.crosstab(df['Complaint Type'],df['Location Type'],normalize='index')
+contingency_pcr
+
+import matplotlib.pyplot as plt
+plt.figure(figsize=(8,8))
+
+from scipy.stats import chi2_contingency
+c,p,dof,expected=chi2_contingency(contingency)
+print('pvalue is:' ,p, 'and dof is', dof)
+
+#since pvalue is less than 0.05,H0 is rejected.So,the type of complaint or service requested and location not related.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
